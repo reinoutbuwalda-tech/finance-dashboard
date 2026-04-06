@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  date        DateTime
+  month       String
+  description String
+  amount      Decimal  @db.Decimal(10, 2)
+  category    String
+  type        String
+  account     String   @default("ABN")
+  isFiltered  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([month])
+  @@index([account])
+  @@index([category])
+}
