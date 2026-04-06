@@ -3,10 +3,18 @@ import { useState, useEffect, useCallback } from "react"
 import { useSession, signOut } from "next-auth/react"
 
 interface Transaction { id: string; date: string; description: string; amount: string; category: string; type: string }
-interface MonthStat { month: string; _sum: { amount: number | null }; _count: { id: number } }
-interface CatStat { category: string; type: string; _sum: { amount: number | null }; _count: { id: number } }
+interface MonthStat { month: string; _sum: { amount: string | number | null }; _count: { id: number } }
+interface CatStat { category: string; type: string | null; _sum: { amount: string | number | null }; _count: { id: number } }
 
 const ML: Record<string, string> = { "01":"Jan","02":"Feb","03":"Mrt","04":"Apr","05":"Mei","06":"Jun","07":"Jul","08":"Aug","09":"Sep","10":"Okt","11":"Nov","12":"Dec" }
+
+function toNum(v: string | number | null | undefined): number {
+  if (v == null) return 0
+  if (typeof v === "number") return isNaN(v) ? 0 : v
+  const s = String(v).replace(",", ".")
+  const n = parseFloat(s)
+  return isNaN(n) ? 0 : n
+}
 
 export default function Dashboard() {
   const { data: session } = useSession()
@@ -34,12 +42,13 @@ export default function Dashboard() {
   useEffect(() => { fetchData() }, [])
   useEffect(() => { if (activeMonth) fetchData(activeMonth) }, [activeMonth])
 
-  const curMonthStats = monthly.find(m => m.month === activeMonth)
-  const totalIncome = monthly.filter(m => m.month === activeMonth).reduce((s, m) => s + (m._sum.amount || 0), 0)
-  const monthCats = cats.filter(c => c.type === "expense").sort((a, b) => Math.abs((b._sum.amount || 0) - (a._sum.amount || 0)))
-  const totalExpense = monthCats.reduce((s, c) => s + Math.abs(c._sum.amount || 0), 0)
+  // Separate income and expense categories
+  const expCats = cats.filter(c => c.type === "expense" || toNum(c._sum?.amount) < 0)
+  const incCats = cats.filter(c => c.type === "income" || toNum(c._sum?.amount) > 0)
+  const totalExpense = expCats.reduce((s, c) => s + Math.abs(toNum(c._sum?.amount)), 0)
+  const totalIncome = incCats.reduce((s, c) => s + toNum(c._sum?.amount), 0)
   const net = totalIncome - totalExpense
-  const maxCat = monthCats[0]?._sum.amount || 1
+  const maxCat = totalExpense > 0 ? totalExpense : 1
   const sortedMonths = [...monthly].sort((a, b) => b.month.localeCompare(a.month))
   const [y, mo] = activeMonth ? activeMonth.split("-") : ["", ""]
 
@@ -54,6 +63,15 @@ export default function Dashboard() {
     setUploading(false)
     if (d.success) { setMsg({ ok: true, text: `${d.imported} transacties geïmporteerd` }); fetchData() }
     else setMsg({ ok: false, text: d.error || "Upload mislukt" })
+  }
+
+  function fmtDate(dateStr: string) {
+    if (!dateStr) return "--"
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return String(dateStr).slice(0,5)
+      return d.toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit" })
+    } catch { return "--" }
   }
 
   if (!session) return null
@@ -91,14 +109,14 @@ export default function Dashboard() {
         <div className="bg-slate-900 rounded-xl p-5 border border-slate-800 mb-6">
           <h2 className="text-xs uppercase text-slate-500 mb-4">Uitgaven per categorie</h2>
           <div className="space-y-3">
-            {monthCats.map(cat => {
-              const amt = Math.abs(cat._sum.amount || 0)
+            {expCats.map(cat => {
+              const amt = Math.abs(toNum(cat._sum?.amount))
               const pct = Math.round((amt / maxCat) * 100)
               return <div key={cat.category} className="flex items-center gap-3">
                 <span className="text-sm text-slate-300 w-44 flex-shrink-0 truncate">{cat.category}</span>
                 <div className="flex-1 bg-slate-800 rounded-full h-2"><div className="bg-red-500 h-2 rounded-full" style={{width:`${pct}%`}}/></div>
                 <span className="text-sm text-slate-400 w-24 text-right flex-shrink-0">€{amt.toLocaleString("nl-NL",{minimumFractionDigits:0})}</span>
-                <span className="text-xs text-slate-600 w-6 text-right">{cat._count.id}x</span>
+                <span className="text-xs text-slate-600 w-6 text-right">{cat._count?.id || 0}x</span>
               </div>
             })}
           </div>
@@ -113,11 +131,11 @@ export default function Dashboard() {
               <tbody>
                 {txs.slice(0,60).map(tx => (
                   <tr key={tx.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                    <td className="py-2.5 pr-4 text-slate-400">{String(tx.date||"").slice(0,5)}</td>
+                    <td className="py-2.5 pr-4 text-slate-400">{fmtDate(tx.date)}</td>
                     <td className="py-2.5 pr-4 text-slate-300 truncate max-w-xs">{tx.description}</td>
                     <td className="py-2.5 pr-4"><span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded">{tx.category}</span></td>
                     <td className={`py-2.5 text-right font-medium ${tx.type==="income"?"text-emerald-400":"text-red-400"}`}>
-                      {tx.type==="income"?"+":"-"}€{Math.abs(Number(tx.amount)).toLocaleString("nl-NL",{minimumFractionDigits:2})}
+                      {tx.type==="income"?"+":"-"}€{Math.abs(toNum(tx.amount)).toLocaleString("nl-NL",{minimumFractionDigits:2})}
                     </td>
                   </tr>
                 ))}
