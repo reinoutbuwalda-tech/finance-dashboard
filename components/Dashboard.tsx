@@ -46,7 +46,7 @@ export default function Dashboard() {
   const expCats = cats.filter(c => c.type === "expense" || toNum(c._sum?.amount) < 0)
   const incCats = cats.filter(c => c.type === "income" || toNum(c._sum?.amount) > 0)
   const totalExpense = expCats.reduce((s, c) => s + Math.abs(toNum(c._sum?.amount)), 0)
-  const totalIncome = incCats.reduce((s, c) => s + toNum(c._sum?.amount), 0)
+  const totalIncome = incCats.reduce((s, c) => s + Math.max(0, toNum(c._sum?.amount)), 0)
   const net = totalIncome - totalExpense
   const maxCat = totalExpense > 0 ? totalExpense : 1
   const sortedMonths = [...monthly].sort((a, b) => b.month.localeCompare(a.month))
@@ -101,9 +101,9 @@ export default function Dashboard() {
           })}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-slate-900 rounded-xl p-5 border border-slate-800"><p className="text-xs uppercase text-slate-500 mb-1">Inkomsten</p><p className="text-2xl font-bold text-emerald-400">€{Math.abs(totalIncome).toLocaleString("nl-NL",{minimumFractionDigits:0})}</p></div>
-          <div className="bg-slate-900 rounded-xl p-5 border border-slate-800"><p className="text-xs uppercase text-slate-500 mb-1">Uitgaven</p><p className="text-2xl font-bold text-red-400">€{totalExpense.toLocaleString("nl-NL",{minimumFractionDigits:0})}</p></div>
-          <div className="bg-slate-900 rounded-xl p-5 border border-slate-800"><p className="text-xs uppercase text-slate-500 mb-1">Netto</p><p className={`text-2xl font-bold ${net>=0?"text-emerald-400":"text-red-400"}`}>€{Math.abs(net).toLocaleString("nl-NL",{minimumFractionDigits:0})}</p></div>
+          <div className="bg-slate-900 rounded-xl p-5 border border-slate-800"><p className="text-xs uppercase text-slate-500 mb-1">Inkomsten</p><p className="text-2xl font-bold text-emerald-400">€{totalIncome.toLocaleString("nl-NL",{minimumFractionDigits:2})}</p></div>
+          <div className="bg-slate-900 rounded-xl p-5 border border-slate-800"><p className="text-xs uppercase text-slate-500 mb-1">Uitgaven</p><p className="text-2xl font-bold text-red-400">€{totalExpense.toLocaleString("nl-NL",{minimumFractionDigits:2})}</p></div>
+          <div className="bg-slate-900 rounded-xl p-5 border border-slate-800"><p className="text-xs uppercase text-slate-500 mb-1">Netto</p><p className={`text-2xl font-bold ${net>=0?"text-emerald-400":"text-red-400"}`}>{net<0?"-":net>0?"+":""}€{Math.abs(net).toLocaleString("nl-NL",{minimumFractionDigits:2})}</p></div>
           <div className="bg-slate-900 rounded-xl p-5 border border-slate-800"><p className="text-xs uppercase text-slate-500 mb-1">Transacties</p><p className="text-2xl font-bold text-slate-300">{txs.length}</p></div>
         </div>
         <div className="bg-slate-900 rounded-xl p-5 border border-slate-800 mb-6">
@@ -115,7 +115,7 @@ export default function Dashboard() {
               return <div key={cat.category} className="flex items-center gap-3">
                 <span className="text-sm text-slate-300 w-44 flex-shrink-0 truncate">{cat.category}</span>
                 <div className="flex-1 bg-slate-800 rounded-full h-2"><div className="bg-red-500 h-2 rounded-full" style={{width:`${pct}%`}}/></div>
-                <span className="text-sm text-slate-400 w-24 text-right flex-shrink-0">€{amt.toLocaleString("nl-NL",{minimumFractionDigits:0})}</span>
+                <span className="text-sm text-slate-400 w-24 text-right flex-shrink-0">€{amt.toLocaleString("nl-NL",{minimumFractionDigits:2})}</span>
                 <span className="text-xs text-slate-600 w-6 text-right">{cat._count?.id || 0}x</span>
               </div>
             })}
