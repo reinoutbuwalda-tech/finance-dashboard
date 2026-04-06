@@ -26,8 +26,14 @@ export async function POST(request: NextRequest) {
 
     const result = await prisma.transaction.createMany({
       data: transactions.map((t) => ({
-        date: new Date(t.dateISO), month: t.month, description: t.description.slice(0, 500),
-        amount: new Prisma.Decimal(String(t.amount)), category: t.category, type: t.type, account, isFiltered: t.isFiltered,
+        date: new Date(t.dateISO),
+        month: t.month,
+        description: t.description.slice(0, 500),
+        amount: new Prisma.Decimal(String(t.amount)),
+        category: t.category,
+        type: t.type,
+        account,
+        isFiltered: t.isFiltered,
       })),
     })
 
